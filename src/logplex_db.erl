@@ -56,7 +56,7 @@ poll(Fun, Timeout) when is_function(Fun, 0),
                          is_integer(Timeout) ->
     Ref = erlang:start_timer(Timeout, self(), poll_limit),
     poll_loop(Fun, Ref).
-
+%% poll数据
 poll_loop(Fun, Ref) ->
     case Fun() of
         not_found ->

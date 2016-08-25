@@ -13,7 +13,8 @@
 -type framing_fun()::fun (({msg, msg()} | loss_indication()) ->
                                  {frame, iolist()} | skip).
 -type queue() :: queue:queue().
-
+%% 使用queue作为消息的Buffer
+%% 默认最大为1024个消息
 -record(lpdb, {messages = queue:new() :: queue(),
                max_size = 1024 :: size(),
                size = 0,
@@ -64,11 +65,15 @@ push(Msg, Buf = #lpdb{}) ->
 push_ext(Msg, Buf = #lpdb{}) ->
     case full(Buf) of
         full ->
+            %% 移走一部分消息
             {displace, displace(Msg, Buf)};
         have_space ->
+            %% 直接插入消息
             {insert, insert(Msg, Buf)}
     end.
-
+%% 向外pop数据
+%% 如果有丢失，会返回丢失情况
+%% 每次pop完，如果有丢失就会复位丢失情况
 -spec pop(buf()) -> {empty, buf()} |
                     {{msg, msg()}, buf()} |
                     {loss_indication(), buf()}.
@@ -87,7 +92,7 @@ pop(Buf = #lpdb{loss_count = N,
     {{loss_indication, N, When},
      Buf#lpdb{loss_count = 0,
               loss_start = undefined}}.
-
+%% 判断当前的Buffer是否满了
 full(#lpdb{max_size = Max, size = N}) when N >= Max -> full;
 full(#lpdb{}) -> have_space.
 
@@ -112,7 +117,7 @@ to_list(#lpdb{messages = Q,
 -spec from_list([msg()]) -> #lpdb{}.
 from_list(Msgs) ->
     #lpdb{messages = queue:from_list(Msgs), size = length(Msgs)}.
-
+%% 直接向队列中插入数据
 insert(Msg, Buf = #lpdb{messages = Q, size = Len}) ->
     Buf#lpdb{messages = queue:in(Msg, Q), size = Len+1}.
 
@@ -132,7 +137,7 @@ displace_test_() ->
     ].
 
 -endif.
-
+%% 从Buffer中drop掉一定量的数据
 -spec drop(Count::non_neg_integer(), buf()) -> buf().
 drop(0, Buf = #lpdb{}) -> Buf;
 drop(1, Buf = #lpdb{messages = OldQueue, size=Size}) ->
@@ -159,6 +164,7 @@ drop_test_() ->
 
 -endif.
 
+%% 标记丢失日志的数量和时间
 %% lose(Buf) -> lose(os:timestamp(), 1, Buf).
 lose(Count, Buf) -> lose(os:timestamp(), Count, Buf).
 
@@ -171,6 +177,7 @@ lose(Time = {_,_,_}, Count, Buf = #lpdb{loss_count=0})
              loss_start=Time};
 lose(_Time, NewCount, Buf = #lpdb{loss_count=OldCount})
   when NewCount > 0, is_integer(OldCount) ->
+    %% 对丢失的数据进行累加
     Buf#lpdb{loss_count=NewCount + OldCount}.
 
 -ifdef(TEST).

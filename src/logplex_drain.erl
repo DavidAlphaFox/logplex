@@ -114,6 +114,7 @@ start(#drain{type=Type, id=Id,
 
 whereis(DrainId) when is_integer(DrainId) ->
   whereis({drain, DrainId});
+%% 使用gproc进行全局的查找
 whereis({drain, _DrainId} = Name) ->
     gproc:lookup_local_name(Name).
 
@@ -124,6 +125,7 @@ start(Type, DrainId, Args) ->
     start_mod(mod(Type), DrainId, Args).
 
 start_mod(Mod, DrainId, Args) when is_atom(Mod) ->
+    %% 根据类型，启动相应的drain进程
     supervisor:start_child(logplex_drain_sup,
                            {DrainId,
                             {Mod, start_link, Args},
@@ -174,6 +176,7 @@ reserve_token() ->
 -spec poll_token(id()) -> token() | {'error', 'timeout'} |
                           {'error', any()}.
 poll_token(DrainId) ->
+    %% 从ets中用DrainID找出相应的token
     logplex_db:poll(fun () ->
                             case lookup_token(DrainId) of
                                 not_found -> not_found;
@@ -181,7 +184,7 @@ poll_token(DrainId) ->
                             end
                     end,
                     logplex_app:config(default_redis_poll_ms, 2000)).
-
+%% 查询相应的ets
 lookup_token(DrainId) when is_integer(DrainId) ->
     case ets:lookup(drains, DrainId) of
         [#drain{token=Token}] ->

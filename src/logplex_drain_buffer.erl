@@ -71,7 +71,8 @@ start_link(ChannelId) ->
 start_link(ChannelId, Owner) ->
     start_link(ChannelId, Owner, notify,
               logplex_app:config(drain_buffer_size, 1024)).
-
+%% 启动一个gen_fsm作为drain的buffer
+%% 有两种模式，一种是主动的模式，一种是被动的模式
 -spec start_link(ChannelId::logplex_channel:id(),
                  Owner::pid(),
                  'passive' | 'notify', Size::pos_integer()) -> any().
@@ -120,7 +121,9 @@ init({Mode, S = #state{channel_id = ChannelId,
                        buf_size = Size}})
   when Mode =:= notify orelse Mode =:= passive,
        is_pid(Owner), is_integer(ChannelId) ->
+    %% 向channel注册
     logplex_channel:register({channel, ChannelId}),
+    %% 创建一个消息队列
     {ok, Mode, S#state{buf = logplex_msg_buffer:new(Size)}}.
 
 

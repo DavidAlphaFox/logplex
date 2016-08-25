@@ -95,7 +95,7 @@
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
-
+%% 使用gen_fsm的状态机
 start_link(ChannelID, DrainID, DrainTok,
            Uri) ->
     gen_fsm:start_link(?MODULE,
@@ -674,7 +674,7 @@ close_if_old(State = #state{client = Client}) ->
         _ ->
             {not_closed, start_close_timer(State)}
     end.
-
+%% 启动一个drain的buffer
 start_drain_buffer(State = #state{channel_id=ChannelId,
                                   buf = undefined}) ->
     Size = default_buf_size(),
