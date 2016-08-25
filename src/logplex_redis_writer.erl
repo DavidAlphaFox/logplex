@@ -45,6 +45,7 @@ init(Parent, BufferPid, RedisOpts) ->
 loop(BufferPid, Socket, RedisOpts) when is_port(Socket) ->
     verify_open_connection(Socket),
     write_queued_logs(BufferPid, Socket),
+    %% 检查是否退出
     check_for_stop_signal(),
     ?MODULE:loop(BufferPid, Socket, RedisOpts).
 
@@ -79,7 +80,7 @@ write_queued_logs(BufferPid, Socket) ->
 
 check_for_stop_signal() ->
     receive stop -> exit(normal) after 0 -> ok end.
-
+%% 5s后重启
 throttled_restart(Reason) ->
     throttled_restart(Reason, 5000).
 

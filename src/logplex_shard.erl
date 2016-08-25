@@ -420,7 +420,7 @@ stop_pool(Pid) ->
 
 stop_buffer(Pid) ->
     logplex_queue:stop(Pid).
-
+%% 解析Redis的URI
 parse_redis_uri(Url) when is_list(Url) ->
     case ex_uri:decode(Url) of
         {ok, Uri = #ex_uri{scheme="redis",
@@ -439,11 +439,11 @@ parse_redis_uri(Url) when is_list(Url) ->
         _ ->
             {error, bad_uri}
     end.
-
+%% 排序键
 parse_redis_uri_fragkey(#ex_uri{fragment = Frag}) when Frag =/= undefined ->
     [{sortkey, Frag}];
 parse_redis_uri_fragkey(_) -> [].
-
+%% 密码
 parse_redis_uri_pass(#ex_uri{authority=Auth}) when Auth =/= undefined ->
     case Auth of
         #ex_uri_authority{userinfo=Pass} when Pass =/= undefined ->
@@ -451,7 +451,7 @@ parse_redis_uri_pass(#ex_uri{authority=Auth}) when Auth =/= undefined ->
         _ -> []
     end;
 parse_redis_uri_pass(_) -> [].
-
+%% database
 parse_redis_uri_db(#ex_uri{path=Path}) when Path =/= undefined ->
     case iolist_to_binary(Path) of
         <<"/", DB/binary>> when DB =/= <<"">> ->
@@ -460,7 +460,7 @@ parse_redis_uri_db(#ex_uri{path=Path}) when Path =/= undefined ->
             []
     end;
 parse_redis_uri_db(_) -> [].
-
+%% 对redis排序
 redis_sort(Urls) ->
     Parsed = lists:map(fun parse_redis_uri/1, Urls),
     [ proplists:get_value(url, Server)
@@ -470,6 +470,8 @@ sortfun(A, B) ->
     sortkey(A) =< sortkey(B).
 
 sortkey(Info) ->
+    %% 按键排序
+    %% 或者按URI排序
     case proplists:get_value(sortkey, Info) of
         undefined ->
             proplists:get_value(url, Info);

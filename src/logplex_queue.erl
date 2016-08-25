@@ -205,7 +205,7 @@ handle_cast(stop, State = #state{workers=Workers}) ->
     [ exit(Worker, shutdown) ||
         Worker <- Workers ],
     {stop, normal, State};
-
+%% 注册工作ID
 handle_cast({register, WorkerPid}, #state{workers=Workers}=State) ->
     {noreply, State#state{workers=[WorkerPid|Workers]}};
 
