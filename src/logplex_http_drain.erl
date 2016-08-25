@@ -128,9 +128,11 @@ init(State0 = #state{uri=URI,
     try
         Dest = uri_to_string(URI),
         State = start_drain_buffer(State0),
+        %% 向drain注册自己
         logplex_drain:register(DrainId, http, Dest),
         ?INFO("drain_id=~p channel_id=~p dest=~s at=spawn",
               log_info(State, [])),
+        %% 初始化的状态是disconnected
         {ok, disconnected,
          State, hibernate}
     catch
@@ -270,7 +272,7 @@ handle_close_timeout_msg(StateName, State) ->
             end
     end.
 
-
+%% 尝试去连接相应的节点
 %% @private
 try_connect(State = #state{uri=Uri,
                            drain_id=DrainId,
@@ -325,8 +327,10 @@ http_fail(State = #state{client=Client}) ->
 %% @private
 ready_to_send(State = #state{buf = Buf,
                              out_q = Q}) ->
+    %% 先看queue中是否有数据，如果没有数据就看Buffer是有数据
     case queue:out(Q) of
         {empty, Q} ->
+            %% 将Buffer的数据，变换成frame的数据
             logplex_drain_buffer:set_active(Buf, target_bytes(),
                                             fun ?MODULE:drain_buf_framing/1),
             {next_state, connected, State, ?HIBERNATE_TIMEOUT};
@@ -339,9 +343,12 @@ try_send(Frame = #frame{tries = Tries},
   when Tries > 0 ->
     Req = request_to_iolist(Frame, State),
     ReqStart = os:timestamp(),
+    %% 尝试发送
+    %% 不成功会进行相应的重试
     try logplex_http_client:raw_request(Pid, Req, ?REQUEST_TIMEOUT) of
         {ok, Status, _Headers} ->
             ReqEnd = os:timestamp(),
+            %% 处理response
             handle_response_status(Status, Frame, State, ltcy(ReqStart, ReqEnd));
         {error, Why} ->
             ?WARN("drain_id=~p channel_id=~p dest=~s at=send_request"
@@ -550,6 +557,8 @@ frame_id_to_iolist(ID) when is_binary(ID) ->
 %% @doc Frame has just consumed a try. Decrement #frame.tries. If it
 %% has at least one try remaining, push it on to the front of the
 %% outbound frame queue. If it is out of tries, drop it.
+%% 将需要发送的frame放回队列，每次重试减少1个记述
+%% 当计数小于2的时候，丢弃相应的frame
 retry_frame(Frame = #frame{tries = N},
             State = #state{out_q = Q}) when N >= 2 ->
     NewQ = queue:in_r(Frame#frame{tries = N - 1}, Q),
@@ -678,6 +687,7 @@ close_if_old(State = #state{client = Client}) ->
 start_drain_buffer(State = #state{channel_id=ChannelId,
                                   buf = undefined}) ->
     Size = default_buf_size(),
+    %% 使用notify模式，创建一个Buffer
     {ok, Buf} = logplex_drain_buffer:start_link(ChannelId, self(),
                                                 notify, Size),
     State#state{buf = Buf}.

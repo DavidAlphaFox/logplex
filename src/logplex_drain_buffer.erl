@@ -143,7 +143,7 @@ active(Msg, S = #state{}) ->
     ?WARN("state=active Unexpected msg ~p", [Msg]),
     {next_state, active, S, ?HIBERNATE_TIMEOUT}.
 
-
+%% 被动模式
 %% @private
 passive(notify, S = #state{buf = Buf}) ->
     NewState = S#state{on_activation=undefined},
@@ -170,7 +170,7 @@ passive(Msg, S = #state{}) ->
     ?WARN("state=passive Unexpected msg ~p", [Msg]),
     {next_state, passive, S, ?HIBERNATE_TIMEOUT}.
 
-
+%% 通知模式
 %% @private
 notify({set_active, TargBytes, Fun},
        S = #state{})
@@ -239,7 +239,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
+%% 向buffer的拥有者发送一条消息
 %% @private
 send_notification(S = #state{owner = Owner}) ->
     Owner ! {logplex_drain_buffer, self(), new_data},
