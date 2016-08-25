@@ -166,6 +166,8 @@ stop(DrainId, Timeout) ->
 
 reserve_token() ->
     Token = new_token(),
+    %% 获取一个新的drainID
+    %% 通过使用Redis的Incr方式进行递增
     case redis_helper:drain_index() of
         DrainId when is_integer(DrainId) ->
            {ok, DrainId, Token};
@@ -228,6 +230,7 @@ create(DrainId, Token, ChannelId, URI)
         [_] ->
             {error, already_exists};
         [] ->
+            %% 在Redis中存储drain相关的信息
             case redis_helper:create_url_drain(DrainId, ChannelId,
                                                Token, uri_to_binary(URI)) of
                 ok ->
@@ -255,7 +258,7 @@ new_token() ->
 
 new_token(0) ->
     exit({error, failed_to_reserve_drain_token});
-
+%% 创建一个新的token，用来作为标识
 new_token(Retries) ->
     Token = list_to_binary("d." ++ uuid:to_string(uuid:v4())),
     case ets:match_object(drains, #drain{token=Token, _='_'}) of
